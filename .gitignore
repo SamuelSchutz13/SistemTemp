@@ -15,6 +15,6 @@ ENV/
 *.sqlite-wal
 *.sqlite-shm
 *.sqlite-journal
-.DS_Store
-Thumbs.db
-Desktop.ini
+.pytest_cache/
+.coverage
+htmlcov/
