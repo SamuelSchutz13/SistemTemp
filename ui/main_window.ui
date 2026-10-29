@@ -3,43 +3,84 @@
  <class>MainWindow</class>
  <widget class="QMainWindow" name="MainWindow">
   <property name="geometry">
-   <rect><x>0</x><y>0</y><width>800</width><height>600</height></rect>
+   <rect><x>0</x><y>0</y><width>1100</width><height>760</height></rect>
+  </property>
+  <property name="minimumSize">
+   <size><width>900</width><height>620</height></size>
   </property>
   <property name="windowTitle">
    <string>SistemTemp</string>
   </property>
   <property name="styleSheet">
    <string notr="true">
-    QMainWindow { background-color: #FFFFFF; }
-    QLabel { color: #333333; font-size: 11pt; }
-    QPushButton { background-color: #F0F0F0; border: 1px solid #CCCCCC; border-radius: 4px; padding: 6px 12px; font-size: 10pt; }
-    QPushButton:hover { background-color: #E5E5E5; }
-    QComboBox, QDateEdit { border: 1px solid #CCCCCC; border-radius: 4px; padding: 4px; font-size: 10pt; background: #FFFFFF; }
-    QTableWidget { border: 1px solid #E0E0E0; gridline-color: #F0F0F0; font-size: 10pt; background-color: #FFFFFF; }
-    QHeaderView::section { background-color: #FAFAFA; border: none; border-bottom: 1px solid #E0E0E0; font-weight: bold; padding: 4px; }
+    QMainWindow, QWidget#centralwidget { background-color: #0B1120; }
+    QWidget { font-family: "Segoe UI"; }
+    QLabel { color: #E2E8F0; font-size: 10pt; }
+    QLabel[role="cardTitulo"] { color: #94A3B8; font-size: 9pt; font-weight: 600; }
+    QLabel[role="cardValor"] { color: #F8FAFC; font-size: 20pt; font-weight: 700; }
+    QFrame[card="true"] { background-color: #111827; border: 1px solid #1F2937; border-radius: 12px; }
+    QPushButton { background-color: #1F2937; color: #E2E8F0; border: 1px solid #334155; border-radius: 8px; padding: 8px 16px; font-size: 10pt; font-weight: 600; }
+    QPushButton:hover { background-color: #273449; border-color: #475569; }
+    QPushButton:pressed { background-color: #0F172A; }
+    QPushButton#btnRegistrar { background-color: #EF4444; color: white; border: none; }
+    QPushButton#btnRegistrar:hover { background-color: #DC2626; }
+    QPushButton#btnLimparTudo { background-color: transparent; color: #F87171; border-color: #7F1D1D; }
+    QPushButton#btnLimparTudo:hover { background-color: #2A1215; }
+    QComboBox, QDateEdit { background: #111827; color: #E2E8F0; border: 1px solid #334155; border-radius: 8px; padding: 6px 30px 6px 12px; font-size: 10pt; min-width: 150px; }
+    QComboBox:hover, QDateEdit:hover, QComboBox:on { border-color: #EF4444; }
+    QComboBox::drop-down, QDateEdit::drop-down { subcontrol-origin: padding; subcontrol-position: center right; width: 28px; border: none; }
+    QComboBox::down-arrow, QDateEdit::down-arrow { image: url(assets/chevron.svg); width: 12px; height: 12px; }
+    QComboBox QAbstractItemView { background: #111827; color: #E2E8F0; border: 1px solid #334155; padding: 4px; outline: none; selection-background-color: #EF4444; selection-color: white; }
+    QCalendarWidget QWidget#qt_calendar_navigationbar { background-color: #111827; }
+    QCalendarWidget QToolButton { color: #E2E8F0; background: transparent; padding: 4px 8px; }
+    QCalendarWidget QAbstractItemView { background: #111827; color: #E2E8F0; selection-background-color: #EF4444; selection-color: white; }
+    QTableWidget { background-color: #111827; alternate-background-color: #0F172A; color: #E2E8F0; border: 1px solid #1F2937; border-radius: 12px; gridline-color: transparent; font-size: 10pt; selection-background-color: #3B1E24; selection-color: #F8FAFC; }
+    QHeaderView::section { background-color: #111827; color: #94A3B8; border: none; border-bottom: 1px solid #1F2937; font-weight: 600; padding: 8px; }
+    QTableCornerButton::section { background-color: #111827; border: none; }
+    QScrollBar:vertical { background: transparent; width: 10px; margin: 4px 2px; }
+    QScrollBar::handle:vertical { background: #334155; border-radius: 3px; min-height: 30px; }
+    QScrollBar::handle:vertical:hover { background: #475569; }
+    QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical, QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { height: 0; background: none; }
    </string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
-    <property name="spacing"><number>12</number></property>
-    <property name="leftMargin"><number>16</number></property>
-    <property name="topMargin"><number>16</number></property>
-    <property name="rightMargin"><number>16</number></property>
-    <property name="bottomMargin"><number>16</number></property>
+    <property name="spacing"><number>14</number></property>
+    <property name="leftMargin"><number>20</number></property>
+    <property name="topMargin"><number>20</number></property>
+    <property name="rightMargin"><number>20</number></property>
+    <property name="bottomMargin"><number>20</number></property>
 
     <item>
      <layout class="QHBoxLayout" name="headerLayout">
       <item>
-       <widget class="QLabel" name="lblTitulo">
-        <property name="styleSheet">
-         <string notr="true">font-size: 14pt; font-weight: bold; color: #111111;</string>
-        </property>
-        <property name="text"><string>SistemTemp</string></property>
-       </widget>
+       <layout class="QVBoxLayout" name="tituloLayout">
+        <property name="spacing"><number>0</number></property>
+        <item>
+         <widget class="QLabel" name="lblTitulo">
+          <property name="styleSheet"><string notr="true">font-size: 18pt; font-weight: 700;</string></property>
+          <property name="text"><string>SistemTemp</string></property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="lblSubtitulo">
+          <property name="styleSheet"><string notr="true">color: #94A3B8;</string></property>
+          <property name="text"><string>Monitor de temperatura e telemetria</string></property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <spacer name="headerSpacer">
+        <property name="orientation"><enum>Qt::Horizontal</enum></property>
+        <property name="sizeType"><enum>QSizePolicy::Expanding</enum></property>
+        <property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property>
+       </spacer>
       </item>
       <item>
        <widget class="QPushButton" name="btnConfig">
-        <property name="text"><string>Configurações</string></property>
+        <property name="cursor"><cursorShape>PointingHandCursor</cursorShape></property>
+        <property name="text"><string>⚙  Configurações</string></property>
        </widget>
       </item>
      </layout>
@@ -47,39 +88,57 @@
 
     <item>
      <layout class="QHBoxLayout" name="cardsLayout">
+      <property name="spacing"><number>14</number></property>
       <item>
        <widget class="QFrame" name="cardTemperatura">
+        <property name="card" stdset="0"><bool>true</bool></property>
         <layout class="QVBoxLayout" name="v1">
-         <property name="margin"><number>0</number></property>
-         <item><widget class="QLabel" name="l1"><property name="text"><string>Temperatura</string></property></widget></item>
-         <item><widget class="QLabel" name="lblTemperatura"><property name="styleSheet"><string>font-size: 14pt; font-weight: bold;</string></property><property name="text"><string>-- °C</string></property></widget></item>
+         <property name="leftMargin"><number>16</number></property>
+         <property name="topMargin"><number>12</number></property>
+         <property name="rightMargin"><number>16</number></property>
+         <property name="bottomMargin"><number>12</number></property>
+         <item><widget class="QLabel" name="l1"><property name="role" stdset="0"><string>cardTitulo</string></property><property name="text"><string>🌡  Temperatura</string></property></widget></item>
+         <item><widget class="QLabel" name="lblTemperatura"><property name="role" stdset="0"><string>cardValor</string></property><property name="text"><string>-- °C</string></property></widget></item>
         </layout>
        </widget>
       </item>
       <item>
        <widget class="QFrame" name="cardUmidade">
+        <property name="card" stdset="0"><bool>true</bool></property>
         <layout class="QVBoxLayout" name="v2">
-         <property name="margin"><number>0</number></property>
-         <item><widget class="QLabel" name="l2"><property name="text"><string>Umidade</string></property></widget></item>
-         <item><widget class="QLabel" name="lblUmidade"><property name="styleSheet"><string>font-size: 14pt; font-weight: bold;</string></property><property name="text"><string>-- %</string></property></widget></item>
+         <property name="leftMargin"><number>16</number></property>
+         <property name="topMargin"><number>12</number></property>
+         <property name="rightMargin"><number>16</number></property>
+         <property name="bottomMargin"><number>12</number></property>
+         <item><widget class="QLabel" name="l2"><property name="role" stdset="0"><string>cardTitulo</string></property><property name="text"><string>💧  Umidade</string></property></widget></item>
+         <item><widget class="QLabel" name="lblUmidade"><property name="role" stdset="0"><string>cardValor</string></property><property name="text"><string>-- %</string></property></widget></item>
         </layout>
        </widget>
       </item>
       <item>
        <widget class="QFrame" name="cardPressao">
+        <property name="card" stdset="0"><bool>true</bool></property>
         <layout class="QVBoxLayout" name="v3">
-         <property name="margin"><number>0</number></property>
-         <item><widget class="QLabel" name="l3"><property name="text"><string>Pressão</string></property></widget></item>
-         <item><widget class="QLabel" name="lblPressao"><property name="styleSheet"><string>font-size: 14pt; font-weight: bold;</string></property><property name="text"><string>-- hPa</string></property></widget></item>
+         <property name="leftMargin"><number>16</number></property>
+         <property name="topMargin"><number>12</number></property>
+         <property name="rightMargin"><number>16</number></property>
+         <property name="bottomMargin"><number>12</number></property>
+         <item><widget class="QLabel" name="l3"><property name="role" stdset="0"><string>cardTitulo</string></property><property name="text"><string>🧭  Pressão</string></property></widget></item>
+         <item><widget class="QLabel" name="lblPressao"><property name="role" stdset="0"><string>cardValor</string></property><property name="text"><string>-- hPa</string></property></widget></item>
         </layout>
        </widget>
       </item>
       <item>
        <widget class="QFrame" name="cardAlerta">
+        <property name="card" stdset="0"><bool>true</bool></property>
+        <property name="minimumSize"><size><width>240</width><height>0</height></size></property>
         <layout class="QVBoxLayout" name="v4">
-         <property name="margin"><number>0</number></property>
-         <item><widget class="QLabel" name="l4"><property name="text"><string>Status</string></property></widget></item>
-         <item><widget class="QLabel" name="lblStatusAlerta"><property name="styleSheet"><string>font-weight: bold; color: #27AE60;</string></property><property name="text"><string>OK</string></property></widget></item>
+         <property name="leftMargin"><number>16</number></property>
+         <property name="topMargin"><number>12</number></property>
+         <property name="rightMargin"><number>16</number></property>
+         <property name="bottomMargin"><number>12</number></property>
+         <item><widget class="QLabel" name="l4"><property name="role" stdset="0"><string>cardTitulo</string></property><property name="text"><string>Status</string></property></widget></item>
+         <item><widget class="QLabel" name="lblStatusAlerta"><property name="styleSheet"><string notr="true">font-size: 12pt; font-weight: 700;</string></property><property name="text"><string>Aguardando leitura</string></property></widget></item>
         </layout>
        </widget>
       </item>
@@ -88,14 +147,16 @@
 
     <item>
      <widget class="PlotWidget" name="graphWidget" native="true">
+      <property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Expanding"><horstretch>0</horstretch><verstretch>2</verstretch></sizepolicy></property>
       <property name="minimumSize">
-       <size><width>0</width><height>200</height></size>
+       <size><width>0</width><height>220</height></size>
       </property>
      </widget>
     </item>
 
     <item>
      <layout class="QHBoxLayout" name="filterLayout">
+      <property name="spacing"><number>10</number></property>
       <item>
        <widget class="QComboBox" name="cbFiltro">
         <item><property name="text"><string>Todas as Leituras</string></property></item>
@@ -106,16 +167,26 @@
       <item>
        <widget class="QDateEdit" name="dateEdit">
         <property name="calendarPopup"><bool>true</bool></property>
+        <property name="displayFormat"><string>dd/MM/yyyy</string></property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="filterSpacer">
+        <property name="orientation"><enum>Qt::Horizontal</enum></property>
+        <property name="sizeType"><enum>QSizePolicy::Expanding</enum></property>
+        <property name="sizeHint" stdset="0"><size><width>40</width><height>20</height></size></property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnLimparTudo">
+        <property name="cursor"><cursorShape>PointingHandCursor</cursorShape></property>
+        <property name="text"><string>Limpar Histórico</string></property>
        </widget>
       </item>
       <item>
        <widget class="QPushButton" name="btnRegistrar">
-        <property name="text"><string>Simular Leitura</string></property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="btnLimparTudo">
-        <property name="text"><string>Limpar Histórico</string></property>
+        <property name="cursor"><cursorShape>PointingHandCursor</cursorShape></property>
+        <property name="text"><string>＋  Simular Leitura</string></property>
        </widget>
       </item>
      </layout>
@@ -123,6 +194,11 @@
 
     <item>
      <widget class="QTableWidget" name="tableHistorico">
+      <property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Expanding"><horstretch>0</horstretch><verstretch>3</verstretch></sizepolicy></property>
+      <property name="editTriggers"><set>QAbstractItemView::NoEditTriggers</set></property>
+      <property name="alternatingRowColors"><bool>true</bool></property>
+      <property name="selectionBehavior"><enum>QAbstractItemView::SelectRows</enum></property>
+      <property name="showGrid"><bool>false</bool></property>
       <column><property name="text"><string>Data/Hora</string></property></column>
       <column><property name="text"><string>Temp. (°C)</string></property></column>
       <column><property name="text"><string>Umidade (%)</string></property></column>
