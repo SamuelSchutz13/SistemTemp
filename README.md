@@ -21,7 +21,7 @@
 </p>
 
 > [!NOTE]
-> Sem celular, o botão *Simular Leitura* gera uma leitura falsa do aparelho "Simulado". O histórico é salvo em SQLite (`database/systemp.db`, tabela `leituras`) e volta quando você abre o app de novo.
+> Sem celular, o botão *Simular Leitura* gera uma leitura falsa do aparelho "Simulado". O histórico é salvo em SQLite (`database/systemp.db`, tabela `leituras`) e volta quando você abre o app de novo. O banco e o log (`logs/systemp.log`) são criados na primeira execução e ficam só no seu PC (não vão para o Git).
 
 ## Integrantes da Equipe
 
@@ -38,7 +38,7 @@
 - **Histórico**: tabela com data/hora, aparelho, temperatura, bateria, tensão, RAM e status.
 - **Filtros**: somente alertas, somente carregando, e por data.
 - **Configurações** (⚙): ajuste os limites de bateria quente, bateria fria e bateria fraca.
-- **App Android**: lê o aparelho a cada 5 s, guarda o próprio histórico de leituras e envia ao PC quando conectado. Usa o mesmo ícone do app do PC.
+- **App Android**: lê o aparelho a cada 5 s, guarda o próprio histórico de leituras (com botão 🗑 para excluí-lo) e envia ao PC quando conectado. Usa o mesmo ícone do app do PC.
 - **Logs**: eventos, alertas e erros vão para `logs/systemp.log`.
 - **Limpar histórico** com confirmação, apagando a tabela, o gráfico e o banco.
 
@@ -47,7 +47,7 @@
 Você precisa do [Python](https://www.python.org) **3.13 ou mais novo**.
 
 ```sh
-git clone https://github.com/Zyraxzz/SistemTemp.git
+git clone https://github.com/SamuelSchutz13/SistemTemp.git
 cd SistemTemp
 
 python -m venv .venv
@@ -57,15 +57,17 @@ pip install -r requirements.txt
 python main.py
 ```
 
+Para rodar os testes: `pip install pytest` e depois `python -m pytest`.
+
 ### Temperatura da bateria do celular (Bluetooth)
 
 O botão **📱 Conectar celular** recebe as leituras de um celular **Android 8 ou mais novo** (o iPhone não deixa ler a bateria).
 
-1. **Celular:** gere o app com `cd android && gradlew assembleDebug` (ou abra a pasta no Android Studio) e instale `android/app/build/outputs/apk/debug/app-debug.apk` com `adb install -r` ou copiando o APK para o celular.
+1. **Celular:** gere o app com `cd android` e `gradlew.bat assembleDebug` (Linux/macOS: `./gradlew assembleDebug`), ou abra a pasta no Android Studio. Precisa do Android SDK e do JDK 17. Depois instale `android/app/build/outputs/apk/debug/app-debug.apk` com `adb install -r` ou copiando o APK para o celular (permita *instalar apps de fontes desconhecidas*).
 2. **Parear:** pareie o celular com o PC pelo Bluetooth do Windows.
 3. **Porta COM:** no Windows, abra *Configurações > Bluetooth > Mais opções de Bluetooth > Portas COM > Adicionar > **Entrada***. Se não houver porta, o próprio SistemTemp oferece abrir essa janela.
 4. **PC:** no SistemTemp, clique em **📱 Conectar celular** e escolha essa porta COM.
-5. **Celular:** no app, toque em **Conectar ao PC** e escolha o PC. Ele manda uma leitura a cada 5 s enquanto ficar aberto.
+5. **Celular:** no app, toque em **Conectar ao PC** e escolha o PC. Ele manda uma leitura a cada 5 s enquanto ficar aberto. O ícone 🗑 ao lado do botão apaga o histórico guardado no celular (pede confirmação).
 
 Cada leitura é uma linha JSON, por exemplo `{"temp": 36.5, "nivel": 82, "tensao": 4.12, "ram": 63, "carregando": true, "saude": "Boa", "nome": "Galaxy", "modelo": "samsung SM-G991B", "android": "14"}`. Só `temp` é obrigatório.
 
@@ -94,6 +96,7 @@ Dá para mudar tudo em **⚙ Configurações** com o app aberto.
 | `database/connection.py`               | Conexão com o banco SQLite                                    |
 | `utils/generate_log.py`                | Registro de eventos em `logs/systemp.log`                     |
 | `ui/*.ui`                              | Layouts e estilos feitos no Qt Designer                       |
+| `tests/`                               | Testes (pytest) da leitura do celular, dos status e do histórico |
 
 ## Como funciona
 
