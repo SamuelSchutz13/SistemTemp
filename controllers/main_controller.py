@@ -5,7 +5,8 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QMainWindow, QMessageBox, QDialog
 from PyQt5.uic import loadUi
 
-from models.telemetry_model import TelemetryModel
+from models.telemetry_model import STATUS_ALERTA, TelemetryModel
+from controllers.bluetooth_controller import BluetoothController
 from controllers.config_controller import ConfigController
 from controllers.grafico_controller import GraficoController
 from controllers.historico_controller import HistoricoController, STATUS_VISUAL
@@ -29,6 +30,7 @@ class MainController(QMainWindow):
 
         self.model = TelemetryModel()
         self.ultima_leitura = None
+        self.ultimo_status = None
 
         self.db = DatabaseConnection("database/systemp.db")
         conexao, cursor = self.conectar_banco()
@@ -43,6 +45,7 @@ class MainController(QMainWindow):
         self.btnConfig.clicked.connect(self.abrir_configuracoes)
         self.btnRegistrar.clicked.connect(self.simular_leitura)
         self.btnLimparTudo.clicked.connect(self.limpar_todo_historico)
+        self.bluetooth = BluetoothController(self.btnBluetooth, self.lblBluetoothStatus, self.atualizar_leitura, self)
 
         self.carregar_historico_banco()
         registrar_evento("INFO", "Janela principal e conexões configuradas com sucesso.")
@@ -72,51 +75,56 @@ class MainController(QMainWindow):
             registrar_evento("ERROR", f"Erro ao carregar histórico do banco: {e}")
             QMessageBox.warning(self, "Aviso", f"Erro ao carregar dados históricos:\n{e}")
 
-    def _atualizar_card_status(self, temperatura: float, umidade: float):
-        texto, cor = STATUS_VISUAL[self.model.verificar_status_climatico(temperatura, umidade)]
+    def _atualizar_card_status(self, leitura):
+        codigo = self.model.verificar_status(leitura)
+        texto, cor = STATUS_VISUAL[codigo]
         self.lblStatusAlerta.setText(texto)
         self.cardAlerta.setStyleSheet(f"#cardAlerta {{ background-color: {cor}; border: none; }}"
                                       "#cardAlerta QLabel { color: white; }")
-        return texto
+        return codigo, texto
 
-    def atualizar_telemetria(self, temperatura: float, umidade: float, pressao: float):
+    def atualizar_leitura(self, leitura):
+        """Mostra uma leitura do aparelho (celular ou simulada) nos cards, no histórico e no gráfico."""
         try:
-            self.ultima_leitura = (temperatura, umidade)
-            orvalho = self.model.calcular_ponto_orvalho(temperatura, umidade)
+            self.ultima_leitura = leitura
+            nivel, tensao, ram = leitura.get("nivel"), leitura.get("tensao"), leitura.get("ram")
 
-            self.lblTemperatura.setText(f"{float(temperatura):.1f} °C")
-            self.lblUmidade.setText(f"{float(umidade):.0f} %")
-            self.lblPressao.setText(f"{float(pressao):.1f} hPa")
+            self.lblTemperatura.setText(f"{leitura['temp']:.1f} °C")
+            self.lblBateria.setText("-- %" if nivel is None else f"{nivel:.0f} %" + (" ⚡" if leitura.get("carregando") else ""))
+            self.lblTensao.setText("-- V" if tensao is None else f"{tensao:.2f} V")
+            self.lblRam.setText("-- %" if ram is None else f"{ram:.0f} %")
+            detalhes = [leitura.get("nome"), leitura.get("modelo"),
+                        leitura.get("android") and f"Android {leitura['android']}",
+                        leitura.get("saude") and f"Saúde: {leitura['saude']}"]
+            self.lblSubtitulo.setText("  ·  ".join(d for d in detalhes if d))
 
-            status_txt = self._atualizar_card_status(temperatura, umidade)
+            codigo, status_txt = self._atualizar_card_status(leitura)
             # o gráfico só ganha o ponto se a leitura foi salva, para não divergir da tabela
-            if self.historico.adicionar(temperatura, umidade, pressao, orvalho, status_txt):
-                self.grafico.adicionar_ponto(float(temperatura))
+            if self.historico.adicionar(leitura, status_txt):
+                self.grafico.adicionar_ponto(leitura["temp"], nivel)
+            self._avisar_se_entrou_em_alerta(codigo, status_txt, leitura)
         except Exception as e:
-            registrar_evento("ERROR", f"Erro ao atualizar telemetria: {e}")
+            registrar_evento("ERROR", f"Erro ao atualizar leitura do aparelho: {e}")
+
+    def _avisar_se_entrou_em_alerta(self, codigo, texto, leitura):
+        # só avisa na transição: com o celular mandando a cada 5 s, avisar sempre viraria spam
+        anterior, self.ultimo_status = self.ultimo_status, codigo
+        if codigo not in STATUS_ALERTA or codigo == anterior:
+            return
+        nivel = leitura.get("nivel")
+        nivel_txt = "--" if nivel is None else f"{nivel:.0f}"
+        registrar_evento("WARNING", f"{texto}: {leitura.get('nome')} Temp={leitura['temp']}°C, Bateria={nivel_txt}%.")
+        QMessageBox.warning(
+            self, "Alerta do Aparelho",
+            f"{texto}\n\n{leitura.get('nome')}: {leitura['temp']:.1f} °C, bateria em {nivel_txt} %.\n"
+            f"Limites: {self.model.temp_min_alerta:.0f}–{self.model.temp_max_alerta:.0f} °C, "
+            f"mínimo {self.model.nivel_min_alerta:.0f} % de bateria.",
+        )
 
     def simular_leitura(self):
         try:
             registrar_evento("INFO", "Usuário acionou o botão 'Simular Leitura'.")
-
-            temp_simulada, umid_simulada, press_simulada = self.model.gerar_leitura_simulada()
-
-            if temp_simulada > self.model.temp_max_alerta:
-                registrar_evento("WARNING", f"Alerta de Calor Extremo detectado: {temp_simulada}°C (Limite: {self.model.temp_max_alerta}°C).")
-                QMessageBox.warning(
-                    self,
-                    "Alerta Climatológico",
-                    f"Temperatura alta detectada: {temp_simulada}°C!\nAcima do limite de {self.model.temp_max_alerta}°C."
-                )
-            elif temp_simulada < self.model.temp_min_alerta:
-                registrar_evento("WARNING", f"Alerta de Frio Intenso detectado: {temp_simulada}°C (Limite: {self.model.temp_min_alerta}°C).")
-                QMessageBox.warning(
-                    self,
-                    "Alerta Climatológico",
-                    f"Temperatura baixa detectada: {temp_simulada}°C!\nAbaixo do limite de {self.model.temp_min_alerta}°C."
-                )
-
-            self.atualizar_telemetria(temp_simulada, umid_simulada, press_simulada)
+            self.atualizar_leitura(self.model.gerar_leitura_simulada())
         except Exception as e:
             registrar_evento("ERROR", f"Erro na simulação de leitura: {e}")
             QMessageBox.critical(self, "Erro", f"Ocorreu um erro ao simular a leitura:\n{e}")
@@ -128,31 +136,25 @@ class MainController(QMainWindow):
             dialog = ConfigController(
                 self.model.temp_max_alerta,
                 self.model.temp_min_alerta,
-                self.model.umid_min_alerta,
+                self.model.nivel_min_alerta,
                 self
             )
 
             if dialog.exec_() == QDialog.Accepted:
-                temp_max, temp_min, umid_min = dialog.get_parametros()
-
-                # Validação lógica básica dos parâmetros configurados
-                if temp_max <= temp_min:
-                    QMessageBox.warning(self, "Aviso de Validação", "A temperatura máxima deve ser maior que a mínima!")
-                    return
-
+                temp_max, temp_min, nivel_min = dialog.get_parametros()  # já validados pelo diálogo
                 self.model.temp_max_alerta = float(temp_max)
                 self.model.temp_min_alerta = float(temp_min)
-                self.model.umid_min_alerta = float(umid_min)
+                self.model.nivel_min_alerta = float(nivel_min)
 
                 registrar_evento(
                     "INFO",
-                    f"Novos parâmetros salvos -> Máx: {temp_max}, Mín: {temp_min}, Umid. Mín: {umid_min}"
+                    f"Novos parâmetros salvos -> Temp. máx: {temp_max}, Temp. mín: {temp_min}, Bateria mín: {nivel_min}"
                 )
 
-                QMessageBox.information(self, "Sucesso", "Novos parâmetros de alertas climáticos salvos!")
+                QMessageBox.information(self, "Sucesso", "Novos limites de alerta do aparelho salvos!")
                 # reavalia a última leitura com os novos limites, sem inventar um registro novo
                 if self.ultima_leitura:
-                    self._atualizar_card_status(*self.ultima_leitura)
+                    self.ultimo_status = self._atualizar_card_status(self.ultima_leitura)[0]
             else:
                 registrar_evento("INFO", "Edição de parâmetros cancelada pelo usuário.")
         except Exception as e:
@@ -168,26 +170,20 @@ class MainController(QMainWindow):
 
             registrar_evento("WARNING", "Usuário solicitou a limpeza de TODO o histórico de registros.")
 
-            msg_box = QMessageBox(self)
-            msg_box.setIcon(QMessageBox.Question)
-            msg_box.setWindowTitle("Confirmar Limpeza")
-            msg_box.setText("Tem certeza que deseja apagar TODO o histórico de registros?")
-
-            btn_sim = msg_box.addButton(QMessageBox.Yes)
-            btn_nao = msg_box.addButton(QMessageBox.No)
-
-            btn_sim.setText("Sim")
-            btn_nao.setText("Não")
-
-            msg_box.setDefaultButton(btn_nao)
-            msg_box.exec_()
-
-            if msg_box.clickedButton() == btn_sim:
+            if self._confirmar("Confirmar Limpeza", "Tem certeza que deseja apagar TODO o histórico de registros?"):
                 self.historico.limpar()
                 self.grafico.limpar()
-                registrar_evento("ERROR", "Auditoria: Todo o histórico e o banco de dados foram apagados pelo operador.")
+                registrar_evento("WARNING", "Auditoria: Todo o histórico e o banco de dados foram apagados pelo operador.")
             else:
                 registrar_evento("INFO", "Operação de limpeza de histórico cancelada pelo usuário.")
-        except (sqlite3.Error, Exception) as e:
+        except Exception as e:
             registrar_evento("ERROR", f"Erro ao limpar histórico: {e}")
             QMessageBox.critical(self, "Erro", f"Não foi possível limpar o histórico:\n{e}")
+
+    def _confirmar(self, titulo, texto):
+        """Pergunta Sim/Não em português, com 'Não' como padrão para evitar apagar sem querer."""
+        caixa = QMessageBox(QMessageBox.Question, titulo, texto, parent=self)
+        sim = caixa.addButton("Sim", QMessageBox.YesRole)
+        caixa.setDefaultButton(caixa.addButton("Não", QMessageBox.NoRole))
+        caixa.exec_()
+        return caixa.clickedButton() is sim

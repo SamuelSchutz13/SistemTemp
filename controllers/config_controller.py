@@ -3,14 +3,14 @@ from PyQt5.uic import loadUi
 
 
 class ConfigController(QDialog):
-    def __init__(self, temp_max_atual, temp_min_atual, umid_min_atual, parent=None):
+    def __init__(self, temp_max_atual, temp_min_atual, nivel_min_atual, parent=None):
         super().__init__(parent)
         loadUi("ui/config_dialog.ui", self)
 
         self.spinTempMax.setValue(temp_max_atual)
         self.spinTempMin.setValue(temp_min_atual)
         
-        self.spinUmidMin.setValue(int(umid_min_atual))
+        self.spinNivelMin.setValue(int(nivel_min_atual))
 
         self.buttonBox.accepted.connect(self.validar_e_aceitar)
         self.buttonBox.rejected.connect(self.reject)
@@ -33,5 +33,5 @@ class ConfigController(QDialog):
         return (
             self.spinTempMax.value(),
             self.spinTempMin.value(),
-            self.spinUmidMin.value()
+            self.spinNivelMin.value()
         )

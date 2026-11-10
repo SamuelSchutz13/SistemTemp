@@ -34,7 +34,7 @@
    <item>
     <widget class="QLabel" name="lblInfo">
      <property name="text">
-      <string>&lt;span style=&quot;font-size:12pt; font-weight:700;&quot;&gt;Limites de Alerta Climático&lt;/span&gt;</string>
+      <string>&lt;span style=&quot;font-size:12pt; font-weight:700;&quot;&gt;Limites de Alerta do Aparelho&lt;/span&gt;</string>
      </property>
     </widget>
    </item>
@@ -43,7 +43,7 @@
      <item row="0" column="0">
       <widget class="QLabel" name="lblTempMax">
        <property name="text">
-        <string>Temp. Máxima Alerta (°C):</string>
+        <string>Bateria quente acima de (°C):</string>
        </property>
       </widget>
      </item>
@@ -63,7 +63,7 @@
      <item row="1" column="0">
       <widget class="QLabel" name="lblTempMin">
        <property name="text">
-        <string>Temp. Mínima Alerta (°C):</string>
+        <string>Bateria fria abaixo de (°C):</string>
        </property>
       </widget>
      </item>
@@ -81,14 +81,14 @@
       </widget>
      </item>
      <item row="2" column="0">
-      <widget class="QLabel" name="lblUmidMin">
+      <widget class="QLabel" name="lblNivelMin">
        <property name="text">
-        <string>Umidade Mínima Alerta (%):</string>
+        <string>Bateria fraca abaixo de (%):</string>
        </property>
       </widget>
      </item>
      <item row="2" column="1">
-      <widget class="QSpinBox" name="spinUmidMin">
+      <widget class="QSpinBox" name="spinNivelMin">
        <property name="minimum">
         <number>0</number>
        </property>

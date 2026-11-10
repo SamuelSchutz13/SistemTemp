@@ -1,55 +1,88 @@
+import json
 import random
 
-import numpy as np
+# status que disparam o aviso (pop-up) quando o aparelho entra neles
+STATUS_ALERTA = {"ALERTA_QUENTE", "ALERTA_FRIO", "BATERIA_FRACA"}
 
 
 class TelemetryModel:
-    def __init__(self):
-        self.temp_max_alerta = 35.0  # °C
-        self.temp_min_alerta = 15.0  # °C
-        self.umid_min_alerta = 30.0  # %
+    """Regras das leituras do aparelho conectado: limites de alerta, status e validação do que chega do celular.
 
-    def verificar_status_climatico(self, temperatura: float, umidade: float) -> str:
-        """
-        Verifica as leituras climáticas em relação aos limites configurados.
-        Retorna o código do status.
-        """
+    Uma leitura é um dict: temp (°C), nivel (%), tensao (V), ram (% usada), carregando (bool),
+    nome, modelo, android, saude (texto). Só temp é obrigatória.
+    """
+
+    def __init__(self):
+        self.temp_max_alerta = 40.0  # °C, bateria quente
+        self.temp_min_alerta = 10.0  # °C, bateria fria
+        self.nivel_min_alerta = 20.0  # %, bateria fraca
+
+    def verificar_status(self, leitura) -> str:
+        """Retorna o código do status da leitura em relação aos limites configurados."""
         try:
-            temperatura, umidade = float(temperatura), float(umidade)
-        except (ValueError, TypeError):
+            temp = float(leitura["temp"])
+        except (KeyError, ValueError, TypeError):
             return "INVALIDO"
 
-        if temperatura > self.temp_max_alerta:
-            return "ALERTA_CALOR"
-        elif temperatura < self.temp_min_alerta:
+        nivel = leitura.get("nivel")
+        if temp > self.temp_max_alerta:
+            return "ALERTA_QUENTE"
+        if temp < self.temp_min_alerta:
             return "ALERTA_FRIO"
-        elif umidade < self.umid_min_alerta:
-            return "ALERTA_SECO"
+        if leitura.get("carregando"):
+            return "CARREGANDO"
+        if nivel is not None and nivel < self.nivel_min_alerta:
+            return "BATERIA_FRACA"
         return "NORMAL"
 
     @staticmethod
-    def calcular_ponto_orvalho(temp: float, umidade: float) -> float:
-        """Calcula o Ponto de Orvalho aproximado (aproximação simplificada de Magnus-Tetens)."""
+    def ler_leitura_celular(linha: str):
+        """Converte uma linha JSON vinda do celular em leitura. Retorna None se for lixo ou sem temperatura válida."""
         try:
-            return round(float(temp) - ((100.0 - float(umidade)) / 5.0), 1)
-        except (ValueError, TypeError):
-            return 0.0
+            dados = json.loads(linha)
+        except ValueError:
+            return None
+        if not isinstance(dados, dict):
+            return None
+
+        # bateria de celular nunca sai disso; fora daqui é ruído
+        temp = _numero(dados.get("temp"), -20, 80)
+        if temp is None:
+            return None
+        return {
+            "temp": round(temp, 1),
+            "nivel": _numero(dados.get("nivel"), 0, 100),
+            "tensao": _numero(dados.get("tensao"), 0, 10),
+            "ram": _numero(dados.get("ram"), 0, 100),
+            "carregando": dados.get("carregando") is True,
+            "nome": _texto(dados.get("nome")) or "Celular",
+            "modelo": _texto(dados.get("modelo")),
+            "android": _texto(dados.get("android")),
+            "saude": _texto(dados.get("saude")),
+        }
 
     @staticmethod
     def gerar_leitura_simulada():
-        """Retorna (temperatura, umidade, pressão) aleatórias para simular um sensor."""
-        return (
-            round(random.uniform(10.0, 40.0), 1),
-            random.randint(20, 95),
-            round(random.uniform(1000.0, 1025.0), 1),
-        )
+        """Leitura falsa para testar o app sem celular."""
+        return {
+            "temp": round(random.uniform(20.0, 48.0), 1),
+            "nivel": float(random.randint(5, 100)),
+            "tensao": round(random.uniform(3.5, 4.4), 2),
+            "ram": float(random.randint(30, 90)),
+            "carregando": random.random() < 0.3,
+            "nome": "Simulado",
+            "modelo": "Aparelho de teste",
+            "android": "14",
+            "saude": "Boa",
+        }
 
-    def gerar_dados_pre_carregados(self):
-        """
-        Gera histórico inicial de 24h simulando o ciclo circadiano de temperatura.
-        (Temperaturas mais baixas de madrugada, pico à tarde com ruído estocástico).
-        """
-        horas = np.linspace(0, 24, 50)
-        temperaturas = 23 + 8 * np.sin((horas - 10) * np.pi / 12) + np.random.normal(0, 0.8, 50)
 
-        return horas, np.round(temperaturas, 1)
+def _numero(valor, minimo, maximo):
+    if isinstance(valor, bool) or not isinstance(valor, (int, float)):
+        return None
+    valor = float(valor)
+    return valor if minimo <= valor <= maximo else None  # NaN também cai fora
+
+
+def _texto(valor):
+    return valor.strip()[:40] if isinstance(valor, str) and valor.strip() else None

@@ -9,6 +9,7 @@ def configurar_logger():
     logger.setLevel(logging.INFO)
 
     if not logger.handlers:
+        os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
         file_handler = logging.FileHandler(LOG_FILE, encoding="utf-8")
         formatter = logging.Formatter(
             "%(asctime)s [%(levelname)s] - %(message)s",
@@ -22,13 +23,5 @@ def configurar_logger():
 logger = configurar_logger()
 
 def registrar_evento(nivel: str, mensagem: str):
-    """Registra eventos operacionais, erros ou desarmes com a severidade correta."""
-    nivel = nivel.upper()
-    if nivel == "INFO":
-        logger.info(mensagem)
-    elif nivel == "WARNING":
-        logger.warning(mensagem)
-    elif nivel == "ERROR":
-        logger.error(mensagem)
-    else:
-        logger.info(mensagem)
+    """Registra eventos operacionais, erros ou desarmes com a severidade correta (INFO, WARNING, ERROR)."""
+    logger.log(getattr(logging, nivel.upper(), logging.INFO), mensagem)

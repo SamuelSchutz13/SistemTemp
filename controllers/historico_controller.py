@@ -5,21 +5,30 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QHeaderView, QTableWidgetItem
 
+from models.telemetry_model import STATUS_ALERTA
 from utils.generate_log import registrar_evento
 
 # código do model -> (texto exibido, cor)
 STATUS_VISUAL = {
-    "ALERTA_CALOR": ("ALERTA: CALOR EXTREMO", "#EF4444"),
-    "ALERTA_FRIO": ("ALERTA: FRIO INTENSO", "#3B82F6"),
-    "ALERTA_SECO": ("ALERTA: AR MUITO SECO", "#F59E0B"),
-    "NORMAL": ("CLIMA ESTÁVEL (OK)", "#10B981"),
+    "ALERTA_QUENTE": ("ALERTA: BATERIA QUENTE", "#EF4444"),
+    "ALERTA_FRIO": ("ALERTA: BATERIA FRIA", "#3B82F6"),
+    "BATERIA_FRACA": ("BATERIA FRACA", "#F59E0B"),
+    "CARREGANDO": ("CARREGANDO", "#06B6D4"),
+    "NORMAL": ("APARELHO OK", "#10B981"),
     "INVALIDO": ("DADO INVÁLIDO", "#64748B"),
 }
 _COR_POR_TEXTO = dict(STATUS_VISUAL.values())
+_TEXTOS_ALERTA = {STATUS_VISUAL[c][0] for c in STATUS_ALERTA}
+COL_STATUS = 6
+
+
+def _fmt(valor, casas):
+    """Formata número para a tabela; campo que o aparelho não mandou aparece como '--'."""
+    return "--" if valor is None else f"{float(valor):.{casas}f}"
 
 
 class HistoricoController:
-    """Cuida da tabela de histórico, dos filtros (temperatura e data) e da gravação no banco."""
+    """Cuida da tabela de leituras do aparelho, dos filtros (status e data) e da gravação no banco."""
 
     def __init__(self, table, cb_filtro, date_edit, conexao, cursor):
         self.table = table
@@ -29,129 +38,108 @@ class HistoricoController:
         self.cursor = cursor
 
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        for col in (0, COL_STATUS):  # data/hora e status não podem cortar
+            self.table.horizontalHeader().setSectionResizeMode(col, QHeaderView.ResizeToContents)
         self.table.verticalHeader().setVisible(False)
 
         self.cb_filtro.currentIndexChanged.connect(self.aplicar_filtros)
         self.date_edit.dateChanged.connect(self.aplicar_filtros)
 
     def criar_tabela_banco(self):
-        """Cria a tabela de histórico no banco de dados se não existir. Lança sqlite3.Error."""
+        """Cria a tabela de leituras se não existir. Lança sqlite3.Error."""
         self.cursor.execute(
             """
-            CREATE TABLE IF NOT EXISTS historico (
+            CREATE TABLE IF NOT EXISTS leituras (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 data_hora TEXT,
+                aparelho TEXT,
                 temperatura REAL,
-                umidade REAL,
-                pressao REAL,
-                orvalho REAL,
+                nivel REAL,
+                tensao REAL,
+                ram REAL,
                 status TEXT
             )
             """
         )
         self.conexao.commit()
-        registrar_evento("INFO", "Verificação/Criação da tabela 'historico' concluída no banco.")
+        registrar_evento("INFO", "Verificação/Criação da tabela 'leituras' concluída no banco.")
 
     def carregar_banco(self):
-        """Lê o histórico salvo, preenche a tabela e retorna a lista de temperaturas (para o gráfico)."""
+        """Lê as leituras salvas, preenche a tabela e retorna [(temperatura, nivel)] para o gráfico."""
         self.cursor.execute(
-            "SELECT data_hora, temperatura, umidade, pressao, orvalho, status FROM historico ORDER BY id ASC"
+            "SELECT data_hora, aparelho, temperatura, nivel, tensao, ram, status FROM leituras ORDER BY id ASC"
         )
         registros = self.cursor.fetchall()
 
-        temperaturas = []
-        for row_data in registros:
-            if len(row_data) < 6:
+        pontos = []
+        for data_hora, aparelho, temp, nivel, tensao, ram, status in registros:
+            if temp is None:
                 continue
-
-            data_hora, temp, umid, press, orvalho, status = row_data
-
-            if temp is None or umid is None:
-                continue
-
-            self._inserir_linha([
-                str(data_hora),
-                f"{float(temp):.1f}",
-                f"{float(umid):.0f}",
-                f"{float(press):.1f}" if press is not None else "0.0",
-                f"{float(orvalho):.1f}" if orvalho is not None else "0.0",
-                str(status),
-            ])
-            temperaturas.append(float(temp))
+            self._inserir_linha(data_hora, aparelho, temp, nivel, tensao, ram, status)
+            pontos.append((float(temp), nivel))
 
         self.aplicar_filtros()
-        registrar_evento("INFO", f"Histórico carregado do banco: {len(registros)} registros encontrados.")
-        return temperaturas
+        registrar_evento("INFO", f"Histórico carregado do banco: {len(registros)} leituras encontradas.")
+        return pontos
 
-    def adicionar(self, temp, umid, press, orvalho, status):
+    def adicionar(self, leitura, status):
         """Grava a leitura no banco e na tabela. Retorna False se não conseguiu gravar."""
         try:
             data_hora = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+            valores = (leitura.get("nome"), leitura["temp"], leitura.get("nivel"), leitura.get("tensao"), leitura.get("ram"))
 
             self.cursor.execute(
                 """
-                INSERT INTO historico (data_hora, temperatura, umidade, pressao, orvalho, status)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO leituras (data_hora, aparelho, temperatura, nivel, tensao, ram, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                (data_hora, float(temp), float(umid), float(press), float(orvalho), str(status))
+                (data_hora, *valores, str(status)),
             )
             self.conexao.commit()
-            registrar_evento("INFO", f"Registro gravado no banco de dados: Temp={temp}°C, Umid={umid}%, Status={status}")
+            registrar_evento("INFO", f"Leitura gravada: {leitura.get('nome')} Temp={leitura['temp']}°C, "
+                                     f"Bateria={leitura.get('nivel')}%, Status={status}")
 
-            self._inserir_linha([
-                data_hora,
-                f"{float(temp):.1f}",
-                f"{float(umid):.0f}",
-                f"{float(press):.1f}",
-                f"{float(orvalho):.1f}",
-                str(status),
-            ])
+            self._inserir_linha(data_hora, *valores, status)
             self.aplicar_filtros()
             self.table.scrollToBottom()
             return True
-        except (sqlite3.Error, ValueError, TypeError) as e:
-            registrar_evento("ERROR", f"Erro ao adicionar histórico na tabela/banco: {e}")
+        except (sqlite3.Error, ValueError, TypeError, KeyError) as e:
+            registrar_evento("ERROR", f"Erro ao adicionar leitura na tabela/banco: {e}")
             return False
 
-    def _inserir_linha(self, dados):
+    def _inserir_linha(self, data_hora, aparelho, temp, nivel, tensao, ram, status):
+        dados = [str(data_hora), str(aparelho or "--"),
+                 _fmt(temp, 1), _fmt(nivel, 0), _fmt(tensao, 2), _fmt(ram, 0), str(status)]
         row = self.table.rowCount()
         self.table.insertRow(row)
         for col, valor in enumerate(dados):
             item = QTableWidgetItem(valor)
             item.setTextAlignment(Qt.AlignCenter)
             self.table.setItem(row, col, item)
-        self.table.item(row, len(dados) - 1).setForeground(QColor(_COR_POR_TEXTO.get(dados[-1], "#E2E8F0")))
+        self.table.item(row, COL_STATUS).setForeground(QColor(_COR_POR_TEXTO.get(dados[COL_STATUS], "#E2E8F0")))
 
     def aplicar_filtros(self):
         """Oculta ou exibe as linhas da tabela de acordo com a opção e data selecionadas."""
         try:
-            opcao_filtro = self.cb_filtro.currentText()
+            opcao = self.cb_filtro.currentText()
             data_filtro = self.date_edit.date().toString("dd/MM/yyyy")
 
             for row in range(self.table.rowCount()):
                 item_data = self.table.item(row, 0)
-                item_temp = self.table.item(row, 1)
-
-                if not item_data or not item_temp:
+                item_status = self.table.item(row, COL_STATUS)
+                if not item_data or not item_status:
                     continue
 
-                data_registro = item_data.text().split(" ")[0]
-                try:
-                    temp_valor = float(item_temp.text())
-                except ValueError:
-                    continue
+                status = item_status.text()
+                if opcao == "Somente Alertas":
+                    corresponde = status in _TEXTOS_ALERTA
+                elif opcao == "Carregando":
+                    corresponde = status == STATUS_VISUAL["CARREGANDO"][0]
+                else:
+                    corresponde = True
 
-                corresponde_data = (data_registro == data_filtro)
-
-                corresponde_temp = True
-                if opcao_filtro == "Temp. Alta (>30°C)":
-                    corresponde_temp = temp_valor > 30.0
-                elif opcao_filtro == "Temp. Baixa (<15°C)":
-                    corresponde_temp = temp_valor < 15.0
-
-                deve_exibir = corresponde_data and corresponde_temp
-                self.table.setRowHidden(row, not deve_exibir)
+                exibir = corresponde and item_data.text().split(" ")[0] == data_filtro
+                self.table.setRowHidden(row, not exibir)
         except Exception as e:
             registrar_evento("ERROR", f"Erro ao aplicar filtros na tabela: {e}")
 
@@ -159,7 +147,7 @@ class HistoricoController:
         return self.table.rowCount() == 0
 
     def limpar(self):
-        """Apaga o histórico do banco e da tabela. Lança sqlite3.Error."""
-        self.cursor.execute("DELETE FROM historico")
+        """Apaga as leituras do banco e da tabela. Lança sqlite3.Error."""
+        self.cursor.execute("DELETE FROM leituras")
         self.conexao.commit()
         self.table.setRowCount(0)

@@ -5,23 +5,23 @@
 <h1 align="center">SistemTemp</h1>
 
 <p align="center">
-  Monitor de temperatura e telemetria: acompanhe temperatura, umidade e pressão em tempo real, com alertas, gráfico e histórico filtrável. Tudo em um app desktop feito com Python e Qt.
+  Monitor do aparelho conectado: o celular Android manda por Bluetooth a temperatura e o nível da bateria, a tensão, a RAM e a saúde da bateria, e o PC mostra tudo em tempo real, com alertas, gráfico e histórico filtrável. App desktop feito com Python e Qt, mais um app Android.
 </p>
 
 <p align="center">
   <img alt="Python 3.13+" src="https://img.shields.io/badge/Python-3.13%2B-3776ab?logo=python&logoColor=white" />
   <img alt="PyQt5" src="https://img.shields.io/badge/PyQt5-5.15-41cd52?logo=qt&logoColor=white" />
   <img alt="pyqtgraph" src="https://img.shields.io/badge/pyqtgraph-0.13-ef4444" />
-  <img alt="NumPy" src="https://img.shields.io/badge/NumPy-2-013243?logo=numpy&logoColor=white" />
+  <img alt="Android" src="https://img.shields.io/badge/Android-8%2B-3ddc84?logo=android&logoColor=white" />
   <img alt="MVC" src="https://img.shields.io/badge/arquitetura-MVC-333333" />
 </p>
 
 <p align="center">
-  <img src="assets/screenshot.png" alt="Tela principal do SistemTemp: cards de temperatura, umidade, pressão e status, gráfico de temperatura e tabela de histórico" />
+  <img src="assets/screenshot.png" alt="Tela principal do SistemTemp" />
 </p>
 
 > [!NOTE]
-> **As leituras são simuladas.** O botão *Simular Leitura* gera valores aleatórios no lugar de um sensor. O histórico é salvo em um banco SQLite (`database/systemp.db`) e volta quando você abre o app de novo.
+> Sem celular, o botão *Simular Leitura* gera uma leitura falsa do aparelho "Simulado". O histórico é salvo em SQLite (`database/systemp.db`, tabela `leituras`) e volta quando você abre o app de novo.
 
 ## Integrantes da Equipe
 
@@ -30,14 +30,15 @@
 
 ## Funcionalidades
 
-- **Painel em tempo real**: cards com temperatura, umidade e pressão da última leitura.
-- **Status com cores**: verde para clima estável, vermelho para calor extremo, azul para frio intenso e laranja para ar muito seco.
-- **Alertas**: um aviso aparece quando a temperatura passa dos limites configurados.
-- **Gráfico de temperatura**: cada leitura vira um ponto na linha do tempo.
-- **Histórico**: tabela com data/hora, temperatura, umidade, pressão, ponto de orvalho e condição.
-- **Filtros**: por faixa de temperatura (alta > 30 °C, baixa < 15 °C) e por data.
-- **Configurações** (⚙): ajuste a temperatura máxima, a mínima e a umidade mínima de alerta. A máxima precisa ser maior que a mínima.
-- **Histórico salvo**: as leituras ficam em SQLite e são recarregadas ao abrir o app.
+- **Conexão Bluetooth com o celular** (📱): mostra o nome do aparelho conectado e o status da conexão (conectado, aguardando ou sem sinal).
+- **Painel em tempo real**: cards com temperatura da bateria, nível da bateria (⚡ quando está carregando), tensão e RAM usada. Embaixo do título aparecem o nome, o modelo, a versão do Android e a saúde da bateria.
+- **Status com cores**: verde para aparelho OK, ciano quando está carregando, vermelho para bateria quente, azul para bateria fria e laranja para bateria fraca.
+- **Alertas**: um aviso aparece quando o aparelho *entra* em alerta (sem repetir a cada leitura).
+- **Gráfico**: temperatura (°C) e nível da bateria (%) na mesma linha do tempo.
+- **Histórico**: tabela com data/hora, aparelho, temperatura, bateria, tensão, RAM e status.
+- **Filtros**: somente alertas, somente carregando, e por data.
+- **Configurações** (⚙): ajuste os limites de bateria quente, bateria fria e bateria fraca.
+- **App Android**: lê o aparelho a cada 5 s, guarda o próprio histórico de leituras e envia ao PC quando conectado. Usa o mesmo ícone do app do PC.
 - **Logs**: eventos, alertas e erros vão para `logs/systemp.log`.
 - **Limpar histórico** com confirmação, apagando a tabela, o gráfico e o banco.
 
@@ -56,13 +57,25 @@ pip install -r requirements.txt
 python main.py
 ```
 
+### Temperatura da bateria do celular (Bluetooth)
+
+O botão **📱 Conectar celular** recebe as leituras de um celular **Android 8 ou mais novo** (o iPhone não deixa ler a bateria).
+
+1. **Celular:** gere o app com `cd android && gradlew assembleDebug` (ou abra a pasta no Android Studio) e instale `android/app/build/outputs/apk/debug/app-debug.apk` com `adb install -r` ou copiando o APK para o celular.
+2. **Parear:** pareie o celular com o PC pelo Bluetooth do Windows.
+3. **Porta COM:** no Windows, abra *Configurações > Bluetooth > Mais opções de Bluetooth > Portas COM > Adicionar > **Entrada***. Se não houver porta, o próprio SistemTemp oferece abrir essa janela.
+4. **PC:** no SistemTemp, clique em **📱 Conectar celular** e escolha essa porta COM.
+5. **Celular:** no app, toque em **Conectar ao PC** e escolha o PC. Ele manda uma leitura a cada 5 s enquanto ficar aberto.
+
+Cada leitura é uma linha JSON, por exemplo `{"temp": 36.5, "nivel": 82, "tensao": 4.12, "ram": 63, "carregando": true, "saude": "Boa", "nome": "Galaxy", "modelo": "samsung SM-G991B", "android": "14"}`. Só `temp` é obrigatório.
+
 ### Limites de alerta padrão
 
 | Parâmetro                 | Padrão  | Alerta quando        |
 | ------------------------- | ------- | -------------------- |
-| Temperatura máxima        | `35 °C` | a leitura passa dele |
-| Temperatura mínima        | `15 °C` | a leitura fica abaixo |
-| Umidade mínima            | `30 %`  | a leitura fica abaixo |
+| Bateria quente            | `40 °C` | a temperatura passa dele |
+| Bateria fria              | `10 °C` | a temperatura fica abaixo |
+| Bateria fraca             | `20 %`  | o nível fica abaixo (e não está carregando) |
 
 Dá para mudar tudo em **⚙ Configurações** com o app aberto.
 
@@ -71,11 +84,13 @@ Dá para mudar tudo em **⚙ Configurações** com o app aberto.
 | Arquivo                                | O que faz                                                     |
 | -------------------------------------- | ------------------------------------------------------------- |
 | `main.py`                              | Ponto de entrada, abre a janela principal                     |
-| `models/telemetry_model.py`            | Limites de alerta, status climático, ponto de orvalho e leitura simulada |
+| `models/telemetry_model.py`            | Limites de alerta, status do aparelho, validação do JSON do celular e leitura simulada |
 | `controllers/main_controller.py`       | Janela principal: cards, status e ações dos botões            |
-| `controllers/grafico_controller.py`    | Gráfico de temperatura (pyqtgraph)                            |
+| `controllers/grafico_controller.py`    | Gráfico de temperatura e nível da bateria (pyqtgraph)         |
 | `controllers/historico_controller.py`  | Tabela de histórico, filtros e gravação no banco              |
 | `controllers/config_controller.py`     | Diálogo de configuração e validação dos limites               |
+| `controllers/bluetooth_controller.py`  | Recebe a temperatura da bateria do celular pela porta COM Bluetooth |
+| `android/`                             | App Android: lê o aparelho, guarda o histórico e envia por Bluetooth |
 | `database/connection.py`               | Conexão com o banco SQLite                                    |
 | `utils/generate_log.py`                | Registro de eventos em `logs/systemp.log`                     |
 | `ui/*.ui`                              | Layouts e estilos feitos no Qt Designer                       |

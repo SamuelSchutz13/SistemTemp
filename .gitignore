@@ -18,3 +18,14 @@ ENV/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+
+# dados locais do usuário
+database/*.db
+logs/*.log
