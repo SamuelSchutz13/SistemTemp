@@ -58,7 +58,9 @@ class MainActivity : Activity() {
     private val bluetooth = Executors.newSingleThreadExecutor()
     private val relogio = Handler(Looper.getMainLooper())
     private val historico = ArrayList<String>()
-    private val arquivoHistorico by lazy { File(filesDir, "historico.txt") }
+    // mais antiga primeiro, igual à tabela do PC; o historico.txt antigo guardava a mais nova primeiro
+    private val arquivoHistorico by lazy { File(filesDir, "leituras.txt") }
+    private val arquivoAntigo by lazy { File(filesDir, "historico.txt") }
 
     private lateinit var lblAparelho: TextView
     private lateinit var lblTemp: TextView
@@ -176,6 +178,8 @@ class MainActivity : Activity() {
             background = card()
             divider = GradientDrawable().apply { setColor(corBorda) }
             dividerHeight = 1
+            isStackFromBottom = true  // abre mostrando a leitura mais recente, embaixo
+            transcriptMode = ListView.TRANSCRIPT_MODE_NORMAL  // desce sozinho só se já estiver no fim
         }
 
         setContentView(LinearLayout(this).apply {
@@ -211,8 +215,8 @@ class MainActivity : Activity() {
         )
 
         val hora = SimpleDateFormat("dd/MM HH:mm:ss", Locale.US).format(Date())
-        historico.add(0, String.format(Locale.US, "%s  %5.1f °C  %5s%s  %.2f V", hora, l.getDouble("temp"), nivel, raio, l.getDouble("tensao")))
-        while (historico.size > maxHistorico) historico.removeAt(historico.size - 1)
+        historico.add(String.format(Locale.US, "%s  %5.1f °C  %5s%s  %.2f V", hora, l.getDouble("temp"), nivel, raio, l.getDouble("tensao")))
+        while (historico.size > maxHistorico) historico.removeAt(0)
         listaAdapter.notifyDataSetChanged()
         runCatching { arquivoHistorico.writeText(historico.joinToString("\n")) }
 
@@ -226,7 +230,13 @@ class MainActivity : Activity() {
     }
 
     private fun carregarHistorico() {
-        runCatching { historico.addAll(arquivoHistorico.readLines().filter { it.isNotBlank() }.take(maxHistorico)) }
+        runCatching {
+            if (arquivoAntigo.exists() && !arquivoHistorico.exists()) {
+                arquivoHistorico.writeText(arquivoAntigo.readLines().filter { it.isNotBlank() }.reversed().joinToString("\n"))
+                arquivoAntigo.delete()
+            }
+            historico.addAll(arquivoHistorico.readLines().filter { it.isNotBlank() }.takeLast(maxHistorico))
+        }
         listaAdapter.notifyDataSetChanged()
     }
 

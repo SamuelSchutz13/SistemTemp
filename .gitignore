@@ -1,3 +1,4 @@
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -5,27 +6,35 @@ __pycache__/
 venv/
 env/
 ENV/
-.env
-.env.*
-!.env.example
-.vscode/
-*.db-wal
-*.db-shm
-*.db-journal
-*.sqlite-wal
-*.sqlite-shm
-*.sqlite-journal
 .pytest_cache/
 .coverage
 htmlcov/
 
+# Segredos
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+
+# Editores e sistema
+.vscode/
+.idea/
+*.iml
+Thumbs.db
+.DS_Store
+
+# Dados locais do usuário (o app recria ao abrir)
+database/*.db
+database/*.db-*
+logs/*.log
+
 # Android
 android/.gradle/
+android/.kotlin/
 android/build/
 android/app/build/
 android/local.properties
-android/.idea/
-
-# dados locais do usuário
-database/*.db
-logs/*.log
+android/captures/
+*.apk
+*.aab
