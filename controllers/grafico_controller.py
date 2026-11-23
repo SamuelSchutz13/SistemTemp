@@ -2,6 +2,8 @@ import math
 
 import pyqtgraph as pg
 
+MAX_PONTOS = 500
+
 
 class GraficoController:
     """Gráfico do aparelho: temperatura da bateria (°C) e nível da bateria (%), que cabem no mesmo eixo 0–100."""
@@ -38,6 +40,8 @@ class GraficoController:
         )
 
     def _redesenhar(self):
+        # mantém só os últimos pontos: com uma leitura a cada 5 s, o gráfico inteiro ficaria lento
+        del self.x_data[:-MAX_PONTOS], self.temps[:-MAX_PONTOS], self.niveis[:-MAX_PONTOS]
         self.linha_temp.setData(self.x_data, self.temps)
         self.linha_nivel.setData(self.x_data, self.niveis)
 

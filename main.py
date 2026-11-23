@@ -1,4 +1,9 @@
+import os
 import sys
+
+# os caminhos (ui/, logs/, database/, assets/) são relativos à pasta do projeto; tem que vir antes dos imports abaixo
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
 from PyQt5.QtGui import QColor, QPalette
 from PyQt5.QtWidgets import QApplication
 from controllers.main_controller import MainController

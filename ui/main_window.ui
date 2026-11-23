@@ -65,7 +65,7 @@
         <item>
          <widget class="QLabel" name="lblSubtitulo">
           <property name="styleSheet"><string notr="true">color: #94A3B8;</string></property>
-          <property name="text"><string>Monitor do aparelho conectado: conecte o celular por Bluetooth</string></property>
+          <property name="text"><string>Monitor do aparelho conectado: conecte o celular pelo cabo USB</string></property>
          </widget>
         </item>
        </layout>
@@ -78,15 +78,15 @@
        </spacer>
       </item>
       <item>
-       <widget class="QLabel" name="lblBluetoothStatus">
+       <widget class="QLabel" name="lblCelularStatus">
         <property name="styleSheet"><string notr="true">color: #64748B;</string></property>
         <property name="text"><string>● Celular desconectado</string></property>
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="btnBluetooth">
+       <widget class="QPushButton" name="btnCelular">
         <property name="cursor"><cursorShape>PointingHandCursor</cursorShape></property>
-        <property name="text"><string>📱  Conectar celular</string></property>
+        <property name="text"><string>📱  Conectar celular (USB)</string></property>
        </widget>
       </item>
       <item>
@@ -186,7 +186,6 @@
        <widget class="QComboBox" name="cbFiltro">
         <item><property name="text"><string>Todas as Leituras</string></property></item>
         <item><property name="text"><string>Somente Alertas</string></property></item>
-        <item><property name="text"><string>Carregando</string></property></item>
        </widget>
       </item>
       <item>
