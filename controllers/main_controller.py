@@ -1,12 +1,12 @@
 import sqlite3
 
-from PyQt5.QtCore import QDate
+from PyQt5.QtCore import QDate, QSettings
 from PyQt5.QtGui import QIcon
 from PyQt5.QtWidgets import QMainWindow, QMessageBox, QDialog
 from PyQt5.uic import loadUi
 
 from models.telemetry_model import STATUS_ALERTA, TelemetryModel
-from controllers.bluetooth_controller import BluetoothController
+from controllers.adb_controller import AdbController
 from controllers.config_controller import ConfigController
 from controllers.grafico_controller import GraficoController
 from controllers.historico_controller import HistoricoController, STATUS_VISUAL
@@ -31,6 +31,12 @@ class MainController(QMainWindow):
         self.model = TelemetryModel()
         self.ultima_leitura = None
         self.ultimo_status = None
+        self.avisou_erro_banco = False
+
+        # limites de alerta salvos entre execuções (no Windows, ficam no registro do usuário)
+        self.config = QSettings("SistemTemp", "SistemTemp")
+        for chave in ("temp_max_alerta", "temp_min_alerta", "nivel_min_alerta"):
+            setattr(self.model, chave, float(self.config.value(chave, getattr(self.model, chave))))
 
         self.db = DatabaseConnection("database/systemp.db")
         conexao, cursor = self.conectar_banco()
@@ -45,7 +51,7 @@ class MainController(QMainWindow):
         self.btnConfig.clicked.connect(self.abrir_configuracoes)
         self.btnRegistrar.clicked.connect(self.simular_leitura)
         self.btnLimparTudo.clicked.connect(self.limpar_todo_historico)
-        self.bluetooth = BluetoothController(self.btnBluetooth, self.lblBluetoothStatus, self.atualizar_leitura, self)
+        self.celular = AdbController(self.btnCelular, self.lblCelularStatus, self.atualizar_leitura, self)
 
         self.carregar_historico_banco()
         registrar_evento("INFO", "Janela principal e conexões configuradas com sucesso.")
@@ -95,13 +101,20 @@ class MainController(QMainWindow):
             self.lblRam.setText("-- %" if ram is None else f"{ram:.0f} %")
             detalhes = [leitura.get("nome"), leitura.get("modelo"),
                         leitura.get("android") and f"Android {leitura['android']}",
-                        leitura.get("saude") and f"Saúde: {leitura['saude']}"]
+                        leitura.get("saude") and f"Saúde: {leitura['saude']}",
+                        leitura.get("corrente") is not None and f"{leitura['corrente']:.0f} mA",
+                        leitura.get("cpu") and f"CPU {leitura['cpu']:.1f} °C",
+                        leitura.get("fonte") and f"Fonte: {leitura['fonte']}"]
             self.lblSubtitulo.setText("  ·  ".join(d for d in detalhes if d))
 
             codigo, status_txt = self._atualizar_card_status(leitura)
             # o gráfico só ganha o ponto se a leitura foi salva, para não divergir da tabela
             if self.historico.adicionar(leitura, status_txt):
                 self.grafico.adicionar_ponto(leitura["temp"], nivel)
+            elif not self.avisou_erro_banco:  # uma vez só: o celular manda a cada 5 s
+                self.avisou_erro_banco = True
+                QMessageBox.warning(self, "Banco de dados", "Não foi possível salvar a leitura no histórico.\n"
+                                    "Veja os detalhes em logs/systemp.log.")
             self._avisar_se_entrou_em_alerta(codigo, status_txt, leitura)
         except Exception as e:
             registrar_evento("ERROR", f"Erro ao atualizar leitura do aparelho: {e}")
@@ -145,6 +158,8 @@ class MainController(QMainWindow):
                 self.model.temp_max_alerta = float(temp_max)
                 self.model.temp_min_alerta = float(temp_min)
                 self.model.nivel_min_alerta = float(nivel_min)
+                for chave in ("temp_max_alerta", "temp_min_alerta", "nivel_min_alerta"):
+                    self.config.setValue(chave, getattr(self.model, chave))
 
                 registrar_evento(
                     "INFO",

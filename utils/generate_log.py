@@ -1,5 +1,6 @@
 import logging
 import os
+from logging.handlers import RotatingFileHandler
 
 LOG_FILE = "logs/systemp.log"
 
@@ -10,7 +11,7 @@ def configurar_logger():
 
     if not logger.handlers:
         os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
-        file_handler = logging.FileHandler(LOG_FILE, encoding="utf-8")
+        file_handler = RotatingFileHandler(LOG_FILE, maxBytes=1_000_000, backupCount=3, encoding="utf-8")
         formatter = logging.Formatter(
             "%(asctime)s [%(levelname)s] - %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S"

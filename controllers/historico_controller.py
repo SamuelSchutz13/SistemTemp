@@ -1,7 +1,7 @@
 import datetime
 import sqlite3
 
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import QDate, Qt
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QHeaderView, QTableWidgetItem
 
@@ -13,13 +13,14 @@ STATUS_VISUAL = {
     "ALERTA_QUENTE": ("ALERTA: BATERIA QUENTE", "#EF4444"),
     "ALERTA_FRIO": ("ALERTA: BATERIA FRIA", "#3B82F6"),
     "BATERIA_FRACA": ("BATERIA FRACA", "#F59E0B"),
-    "CARREGANDO": ("CARREGANDO", "#06B6D4"),
     "NORMAL": ("APARELHO OK", "#10B981"),
     "INVALIDO": ("DADO INVÁLIDO", "#64748B"),
 }
 _COR_POR_TEXTO = dict(STATUS_VISUAL.values())
 _TEXTOS_ALERTA = {STATUS_VISUAL[c][0] for c in STATUS_ALERTA}
 COL_STATUS = 6
+# shortcut: a tabela mostra só as últimas leituras (o banco guarda todas); se precisar ver tudo, paginar por data
+MAX_LINHAS = 100
 
 
 def _fmt(valor, casas):
@@ -36,6 +37,7 @@ class HistoricoController:
         self.date_edit = date_edit
         self.conexao = conexao
         self.cursor = cursor
+        self.hoje = QDate.currentDate()
 
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         for col in (0, COL_STATUS):  # data/hora e status não podem cortar
@@ -67,7 +69,9 @@ class HistoricoController:
     def carregar_banco(self):
         """Lê as leituras salvas, preenche a tabela e retorna [(temperatura, nivel)] para o gráfico."""
         self.cursor.execute(
-            "SELECT data_hora, aparelho, temperatura, nivel, tensao, ram, status FROM leituras ORDER BY id ASC"
+            "SELECT data_hora, aparelho, temperatura, nivel, tensao, ram, status FROM "
+            "(SELECT * FROM leituras ORDER BY id DESC LIMIT ?) ORDER BY id ASC",
+            (MAX_LINHAS,),
         )
         registros = self.cursor.fetchall()
 
@@ -100,12 +104,23 @@ class HistoricoController:
                                      f"Bateria={leitura.get('nivel')}%, Status={status}")
 
             self._inserir_linha(data_hora, *valores, status)
+            if self.table.rowCount() > MAX_LINHAS:
+                self.table.removeRow(0)
+            self._seguir_virada_do_dia()
             self.aplicar_filtros()
             self.table.scrollToBottom()
             return True
         except (sqlite3.Error, ValueError, TypeError, KeyError) as e:
             registrar_evento("ERROR", f"Erro ao adicionar leitura na tabela/banco: {e}")
             return False
+
+    def _seguir_virada_do_dia(self):
+        # depois da meia-noite, quem estava vendo "hoje" passa a ver o dia novo, senão as leituras novas ficam ocultas
+        hoje = QDate.currentDate()
+        if hoje != self.hoje:
+            if self.date_edit.date() == self.hoje:
+                self.date_edit.setDate(hoje)
+            self.hoje = hoje
 
     def _inserir_linha(self, data_hora, aparelho, temp, nivel, tensao, ram, status):
         dados = [str(data_hora), str(aparelho or "--"),
@@ -133,8 +148,6 @@ class HistoricoController:
                 status = item_status.text()
                 if opcao == "Somente Alertas":
                     corresponde = status in _TEXTOS_ALERTA
-                elif opcao == "Carregando":
-                    corresponde = status == STATUS_VISUAL["CARREGANDO"][0]
                 else:
                     corresponde = True
 
